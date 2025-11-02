@@ -16,11 +16,41 @@ import fitz  # PyMuPDF
 from collections import defaultdict
 load_dotenv()
 
+from flask import request
+
+app = Flask(__name__)
+CORS(app, supports_credentials=True)
+
+@app.route("/api/job_outlook", methods=["POST"])
+def job_outlook():
+    data = request.json or {}
+    job_title = data.get("job_title", "")
+    if not job_title:
+        return jsonify({"ok": False, "msg": "Job title required"}), 400
+
+    import joblib
+    v = joblib.load("uploads/vectorizer.pkl")
+    m_demand = joblib.load("uploads/model_demand.pkl")
+    m_salary = joblib.load("uploads/model_salary.pkl")
+    m_remote = joblib.load("uploads/model_remote.pkl")
+
+    X_new = v.transform([job_title])
+    demand = m_demand.predict(X_new)[0]
+    salary = m_salary.predict(X_new)[0]
+    remote = m_remote.predict(X_new)[0]
+
+    return jsonify({
+        "ok": True,
+        "job_title": job_title,
+        "demand": int(demand),
+        "salary": int(salary),
+        "remote": bool(remote)
+    })
+
 # ------------------------------
 # Flask App Setup
 # ------------------------------
-app = Flask(__name__)
-CORS(app, supports_credentials=True)
+
 
 # JWT Setup
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET", "super-secret-jwt-key")
@@ -503,7 +533,60 @@ def signup():
     }
     db.users.insert_one(user_doc)
     return jsonify({"ok": True, "msg": "User created successfully"}), 201
+@app.route('/api/ats/analyze', methods=['POST'])
+def analyze_ats():
+    data = request.get_json()
+    job_description = data.get("job_description", "")
+    resume_text = data.get("resume_text", "")
+    skills = data.get("skills", [])
 
+    # 🔹 Simple mock ATS analysis
+    matched = [s for s in skills if s.lower() in job_description.lower()]
+    missing = [s for s in skills if s.lower() not in job_description.lower()]
+    score = int((len(matched) / len(skills)) * 100) if skills else 0
+
+    return jsonify({
+        "score": score,
+        "matched_skills": matched,
+        "missing_skills": missing
+    })
+
+
+# --- Job Search (mock integration) ---
+@app.route('/api/jobs/search', methods=['POST'])
+def search_jobs():
+    data = request.get_json()
+    skills = data.get("skills", [])
+    query = data.get("query", "")
+    location = data.get("location", "")
+
+    # 🔹 Mock job results (replace with Glassdoor/Naukri API later)
+    jobs = [
+        {
+            "id": 1,
+            "title": "React Developer",
+            "company": "TechCorp",
+            "location": "Remote",
+            "type": "Full-time",
+            "salary": "$90k - $120k",
+            "posted": "2 days ago",
+            "match_score": 82,
+            "url": "https://example.com/job1"
+        },
+        {
+            "id": 2,
+            "title": "Backend Engineer",
+            "company": "DataSystems",
+            "location": "New York, NY",
+            "type": "Full-time",
+            "salary": "$100k - $140k",
+            "posted": "1 week ago",
+            "match_score": 74,
+            "url": "https://example.com/job2"
+        }
+    ]
+
+    return jsonify({"jobs": jobs})
 @app.route("/api/auth/login", methods=["POST"])
 def login():
     data = request.json or {}

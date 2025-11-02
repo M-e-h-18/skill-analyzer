@@ -2,6 +2,7 @@ import axios from "axios";
 
 const BASE = process.env.REACT_APP_API_BASE || "http://127.0.0.1:5000";
 
+
 // Create an Axios instance
 export const api = axios.create({
   baseURL: BASE,
@@ -85,8 +86,21 @@ export const getAnalysisHistory = () => api.get("/api/history"); // Fetches the 
 
 // --- Utility Endpoints ---
 export const ping = () => api.get("/api/ping"); // Simple endpoint to check if the backend is alive
+// --- ATS Score Endpoints ---
+export const analyzeATSScore = (payload) =>
+  api.post("/api/ats/analyze", payload); 
+// Payload could be { resume_text: "...", job_description: "..." }
 
+// --- Job Search Endpoints ---
+export const searchJobs = (skills) =>
+  api.post("/api/jobs/search", { skills });
+// Payload could be { skills: ["Python", "React", "SQL"] }
 // Export default for backward compatibility
+
+export const getJobOutlook = (job_title) =>
+  api.post("/api/job_outlook", { job_title });
+
+
 export default {
   signup,
   login,
@@ -101,4 +115,6 @@ export default {
   evaluateSkills,
   getAnalysisHistory,
   ping,
+  analyzeATSScore,  
+  searchJobs,     
 };
