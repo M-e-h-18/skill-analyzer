@@ -118,3 +118,16 @@ export default {
   analyzeATSScore,  
   searchJobs,     
 };
+
+
+export const postJob = async (jobData) => {
+  return axios.post('/api/jobs', jobData, {
+    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+  });
+};
+
+export const getJobs = async () => {
+  return axios.get('/api/jobs', {
+    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+  });
+};

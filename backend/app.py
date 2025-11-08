@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
 import pymongo
+from routes.jobs import jobs
+
 from flask_jwt_extended import (
     create_access_token, JWTManager, jwt_required, get_jwt_identity
 )
@@ -923,3 +925,6 @@ def internal_error(_):
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000, use_reloader=False)
+
+# Register job routes
+app.register_blueprint(jobs, url_prefix='/api/jobs')

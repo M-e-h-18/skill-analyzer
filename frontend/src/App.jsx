@@ -10,6 +10,9 @@ import ResumeUpload from './components/ResumeUpload';
 import SkillsInput from './components/SkillsInput';
 import GraphView from './components/GraphView';
 import AnalysisPanel from './components/AnalysisPanel';
+import JobOutlookModal from './components/JobOutlookModal';
+//import EmployerDashboard from './components/EmployerDashboard';
+//import EmployeeDashboard from './components/EmployeeDashboard';
 
 // New ATS Score Component
 const ATSScoreAnalyzer = ({ isDark, resumeFile, skills }) => {
@@ -194,6 +197,7 @@ const ATSScoreAnalyzer = ({ isDark, resumeFile, skills }) => {
     </div>
   );
 };
+
 
 // New Job Search Component
 const JobSearch = ({ isDark, skills }) => {
@@ -408,23 +412,25 @@ const SkillAnalyzerApp = () => {
   const [error, setError] = useState('');
   const [resumeFile, setResumeFile] = useState(null);
   const svgRef = useRef();
+  const [showJobOutlook, setShowJobOutlook] = useState(false);
+  //const [userRole, setUserRole] = useState(null);
 
   // Keep all existing useEffect hooks and handlers from original code
-  useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        try {
-          const response = await api.getCurrentUser();
-          setUser(response.data.user);
-        } catch (error) {
-          console.error('Auth check failed:', error);
-          localStorage.removeItem('access_token');
-        }
-      }
-    };
-    checkAuth();
-  }, []);
+  // useEffect(() => {
+  //   const checkAuth = async () => {
+  //     const token = localStorage.getItem('access_token');
+  //     if (token) {
+  //       try {
+  //         const response = await api.getCurrentUser();
+  //         setUser(response.data.user);
+  //       } catch (error) {
+  //         console.error('Auth check failed:', error);
+  //         localStorage.removeItem('access_token');
+  //       }
+  //     }
+  //   };
+  //   checkAuth();
+  // }, []);
 
   useEffect(() => {
     const fetchUserSkills = async () => {
@@ -434,9 +440,9 @@ const SkillAnalyzerApp = () => {
           setSkills(response.data.skills || []);
         } catch (error) {
           console.error("Error fetching user skills:", error);
-          if (error.response && error.response.status === 401) {
-            handleLogout();
-          }
+          // if (error.response && error.response.status === 401) {
+          //   handleLogout();
+          // }
         }
       }
     };
@@ -584,36 +590,66 @@ const SkillAnalyzerApp = () => {
     }
   };
 
-  const handleAuth = async (authData) => {
-    setLoading(true);
-    setError('');
-    try {
-      if (authData.isSignup) {
-        await api.signup(authData);
-        const loginResponse = await api.login(authData);
-        setUser(loginResponse.data.user);
-      } else {
-        const response = await api.login(authData);
-        setUser(response.data.user);
-      }
-      setShowAuth(false);
-    } catch (error) {
-      console.error('Auth failed:', error);
-      const errorMessage = error.response?.data?.msg || error.message || 'Authentication failed';
-      setError(errorMessage);
-      alert(`Authentication failed: ${errorMessage}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const handleAuth = async (authData) => {
+  //   setLoading(true);
+  //   setError('');
+  //   try {
+  //     if (authData.isSignup) {
+  //       await api.signup(authData);
+  //       const loginResponse = await api.login(authData);
+  //       setUser(loginResponse.data.user);
+  //     } else {
+  //       const response = await api.login(authData);
+  //       setUser(response.data.user);
+  //     }
+  //     setShowAuth(false);
+  //   } catch (error) {
+  //     console.error('Auth failed:', error);
+  //     const errorMessage = error.response?.data?.msg || error.message || 'Authentication failed';
+  //     setError(errorMessage);
+  //     alert(`Authentication failed: ${errorMessage}`);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
-  const handleLogout = () => {
-    api.logout();
-    setUser(null);
-    setSkills([]);
-    setAnalysis([]);
-    setError('');
-  };
+//   const handleAuth = async (authData) => {
+//   setLoading(true);
+//   setError('');
+//   try {
+//     if (authData.isSignup) {
+//       await api.signup({
+//         ...authData,
+//         role: authData.role || 'employee' // Default to employee role
+//       });
+//       const loginResponse = await api.login(authData);
+//       setUser(loginResponse.data.user);
+//       setUserRole(loginResponse.data.user.role);
+//       localStorage.setItem('token', loginResponse.data.token);
+//     } else {
+//       const response = await api.login(authData);
+//       setUser(response.data.user);
+//       setUserRole(response.data.user.role);
+//       localStorage.setItem('token', response.data.token);
+//     }
+//     setShowAuth(false);
+//   } catch (error) {
+//     console.error('Auth failed:', error);
+//     const errorMessage = error.response?.data?.msg || error.message || 'Authentication failed';
+//     setError(errorMessage);
+//     alert(`Authentication failed: ${errorMessage}`);
+//   } finally {
+//     setLoading(false);
+//   }
+// };
+
+//   const handleLogout = () => {
+//     api.logout();
+//     setUser(null);
+//     setSkills([]);
+//     setAnalysis([]);
+//     setError('');
+//   };
 
   const handleResumeUpload = async (file) => {
     setLoading(true);
@@ -745,7 +781,7 @@ const SkillAnalyzerApp = () => {
             />
             <ThemeToggle isDark={isDark} onToggle={() => setIsDark(!isDark)} />
             
-            {user ? (
+            {/* {user ? (
               <div className="flex items-center gap-2">
                 <span className={`text-sm ${isDark ? 'text-cyan-300' : 'text-slate-600'}`}>
                   Hello, {user.name ? user.name.split(' ')[0] : user.email.split('@')[0]}!
@@ -765,7 +801,7 @@ const SkillAnalyzerApp = () => {
                 <User className="w-4 h-4" />
                 Login
               </button>
-            )}
+            )} */}
           </div>
         </div>
       </header>
@@ -779,96 +815,98 @@ const SkillAnalyzerApp = () => {
       )}
 
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 font-medium transition-all border-b-2 ${
-                activeTab === tab.id
-                  ? isDark
-                    ? 'border-cyan-400 text-cyan-300'
-                    : 'border-blue-600 text-blue-600'
-                  : 'border-transparent hover:border-slate-400/50 text-slate-500'
-              }`}
-            >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Content */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {activeTab === 'skills' && (
-            <>
-              <div className="space-y-6">
-                <ResumeUpload onUpload={handleResumeUpload} isDark={isDark} />
-                <SkillsInput
-                  skills={skills}
-                  onAddSkill={handleAddSkill}
-                  onRemoveSkill={handleRemoveSkill}
-                  onReset={handleResetSkills}
-                  isDark={isDark}
-                />
-              </div>
-              <div>
-                <GraphView
-                  skills={skills}
-                  analysis={analysis}
-                  loading={analysisLoading}
-                  error={error}
-                  svgRef={svgRef}
-                  onSkillClick={handleSkillClick}
-                  isDark={isDark}
-                />
-                <AnalysisPanel analysis={analysis} isDark={isDark} />
-
-                {jobOutlook && (
-  <div>
-    <h3>Job Outlook for: {jobOutlook.job_title}</h3>
-    <p>Estimated Demand (views): {jobOutlook.demand}</p>
-    <p>Expected Median Salary: ₹{jobOutlook.salary}</p>
-    <p>Remote Friendly: {jobOutlook.remote ? "Yes" : "No"}</p>
+  {/* Tabs */}
+  <div className="flex gap-2 mb-6 border-b">
+    {tabs.map(tab => (
+      <button
+        key={tab.id}
+        onClick={() => setActiveTab(tab.id)}
+        className={`flex items-center gap-2 px-4 py-2 font-medium transition-all border-b-2 ${
+          activeTab === tab.id
+            ? isDark
+              ? 'border-cyan-400 text-cyan-300'
+              : 'border-blue-600 text-blue-600'
+            : 'border-transparent hover:border-slate-400/50 text-slate-500'
+        }`}
+      >
+        <tab.icon className="w-4 h-4" />
+        {tab.label}
+      </button>
+    ))}
   </div>
-)}
-              </div>
-            </>
-          )}
 
-          {activeTab === 'ats' && (
-            <div className="col-span-2">
-              <ATSScoreAnalyzer
-                isDark={isDark}
-                resumeFile={resumeFile}
-                skills={skills}
-              />
-            </div>
-          )}
+  {/* Tab Content */}
+  <div className="grid md:grid-cols-2 gap-6">
+    {activeTab === 'skills' && (
+      <>
+        <div className="space-y-6">
+          <ResumeUpload onUpload={handleResumeUpload} isDark={isDark} />
+          <SkillsInput
+            skills={skills}
+            onAddSkill={handleAddSkill}
+            onRemoveSkill={handleRemoveSkill}
+            onReset={handleResetSkills}
+            isDark={isDark}
+          />
+        </div>
 
-          {activeTab === 'jobs' && (
-            <div className="col-span-2">
-              <JobSearch isDark={isDark} skills={skills} />
-            </div>
+        <div>
+          <GraphView
+            skills={skills}
+            analysis={analysis}
+            loading={analysisLoading}
+            error={error}
+            svgRef={svgRef}
+            onSkillClick={handleSkillClick}
+            isDark={isDark}
+          />
+
+          <AnalysisPanel analysis={analysis} isDark={isDark} />
+
+          {analysis.length > 0 && (
+            <button
+              className={`mt-4 px-6 py-2 rounded-lg font-semibold transition-all ${
+                isDark
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600'
+                  : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600'
+              }`}
+              onClick={() => setShowJobOutlook(true)}
+            >
+              View Job Outlook
+            </button>
           )}
         </div>
-      </main>
+      </>
+    )}
 
-      {/* Auth Modal */}
-      {showAuth && (
-        <AuthModal
-          isOpen={showAuth}
-          onClose={() => setShowAuth(false)}
-          onAuth={handleAuth}
+    {activeTab === 'ats' && (
+      <div className="col-span-2">
+        <ATSScoreAnalyzer
           isDark={isDark}
-          loading={loading}
+          resumeFile={resumeFile}
+          skills={skills}
         />
-      )}
-    </div>
-  );
+      </div>
+    )}
+
+    {activeTab === 'jobs' && (
+      <div className="col-span-2">
+        <JobSearch isDark={isDark} skills={skills} />
+      </div>
+    )}
+  </div>
+</main>
+
+{/* Job Outlook Modal */}
+<JobOutlookModal
+  jobs={analysis.slice(0, 5)}
+  isOpen={showJobOutlook}
+  onClose={() => setShowJobOutlook(false)}
+  isDark={isDark}
+/>
+
+</div>
+);
 };
 
 export default SkillAnalyzerApp;
-
-
