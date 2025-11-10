@@ -1,50 +1,53 @@
+# backend/routes/auth.py
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token
+from models import User
 import datetime
-from models import users
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 @auth_bp.route("/signup", methods=["POST"])
 def signup():
-    data = request.json or {}
+    data = request.get_json() or {}
     email = data.get("email")
     password = data.get("password")
     name = data.get("name", "")
+    role = data.get("role", "employee")  # employer | employee
 
     if not email or not password:
-        return jsonify({"msg": "email and password required"}), 400
+        return jsonify({"msg": "Email and password required"}), 400
+    if User.objects(email=email).first():
+        return jsonify({"msg": "User already exists"}), 409
 
-    if users.find_one({"email": email}):
-        return jsonify({"msg": "user exists"}), 409
+    user = User(
+        email=email,
+        name=name,
+        password=generate_password_hash(password),
+        role=role,
+        created_at=datetime.datetime.utcnow()
+    )
+    user.save()
+    return jsonify({"msg": f"{role.capitalize()} created successfully"}), 201
 
-    user_doc = {
-        "email": email,
-        "password": generate_password_hash(password, method="pbkdf2:sha256"),
-        "name": name,
-        "createdAt": datetime.datetime.utcnow(),
-        "profiles": [],
-        "history": []
-    }
-    users.insert_one(user_doc)
-    return jsonify({"msg": "user created"}), 201
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
-    data = request.json or {}
+    data = request.get_json() or {}
     email = data.get("email")
     password = data.get("password")
 
-    if not email or not password:
-        return jsonify({"msg": "email and password required"}), 400
+    user = User.objects(email=email).first()
+    if not user or not check_password_hash(user.password, password):
+        return jsonify({"msg": "Invalid credentials"}), 401
 
-    user = users.find_one({"email": email})
-    if not user or not check_password_hash(user["password"], password):
-        return jsonify({"msg": "invalid credentials"}), 401
-
-    access_token = create_access_token(identity=str(user["_id"]))
+    token = create_access_token(identity=str(user.id))
     return jsonify({
-        "access_token": access_token,
-        "user": {"email": user["email"], "name": user.get("name", "")}
-    })
+        "token": token,
+        "user": {
+            "id": str(user.id),
+            "email": user.email,
+            "name": user.name,
+            "role": user.role
+        }
+    }), 200

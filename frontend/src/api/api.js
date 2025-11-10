@@ -1,21 +1,18 @@
-import axios from "axios";
+import axios from 'axios';
+import { toast } from 'react-toastify';
+import io from 'socket.io-client'; // Import Socket.IO client
 
-const BASE = process.env.REACT_APP_API_BASE || "http://127.0.0.1:5000";
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:5000/api';
 
-
-// Create an Axios instance
-export const api = axios.create({
-  baseURL: BASE,
-  headers: { "Content-Type": "application/json" },
-  timeout: 10000, // 10 second timeout
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: true,
 });
-export const mapSkill = (payload) => api.post("/api/skills/map", payload); 
-// --- Interceptor for JWT Token ---
-// This interceptor will attach the JWT token to every outgoing request
-// if a token exists in localStorage.
+
+// Request interceptor for adding the JWT token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("access_token");
+    const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -26,108 +23,121 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor for handling common errors
+// Response interceptor for handling 401 Unauthorized globally
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Handle 401 errors globally
-    if (error.response?.status === 401) {
-      localStorage.removeItem("access_token");
-      // You might want to redirect to login page here
-      console.warn("Token expired or invalid, removed from storage");
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('access_token');
+      // Optionally redirect to login or show a message
+      toast.error('Session expired. Please log in again.');
+      window.location.href = '/'; // Redirect to home/login
     }
-    
-    // Handle network errors
-    if (!error.response) {
-      error.message = "Network error - please check your connection and ensure the backend is running";
-    }
-    
     return Promise.reject(error);
   }
 );
 
-// --- Auth Endpoints ---
-export const signup = (payload) => api.post("/api/auth/signup", payload);
-
-export const login = async (payload) => {
-  const response = await api.post("/api/auth/login", payload);
-  // On successful login, save the access token to localStorage
-  if (response.data && response.data.access_token) {
-    localStorage.setItem("access_token", response.data.access_token);
-  }
-  return response;
-};
-
-// Logout function (clears the token from localStorage)
+// Auth
+export const signup = (userData) => api.post('/auth/signup', userData);
+export const login = (credentials) => api.post('/auth/login', credentials);
+export const getCurrentUser = () => api.get('/auth/me');
+export const updateProfile = (profileData) => api.put('/auth/profile', profileData);
 export const logout = () => {
-  localStorage.removeItem("access_token");
-  // Optionally, you might want to redirect the user or clear user state in your app
+  localStorage.removeItem('access_token');
+  // Disconnect socket if connected
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
 };
 
-export const getCurrentUser = () => api.get("/api/auth/me"); // Fetches details of the currently logged-in user
+// Notifications
+export const getNotifications = () => api.get('/notifications');
+export const markNotificationRead = (notifId) => api.post(`/notifications/mark-read/${notifId}`);
 
-// --- Skills Endpoints ---
-export const listSkills = () => api.get("/api/skills"); // Backend uses /api/skills for GET
-export const addSkill = (payload) => api.post("/api/skills/add", payload); // Payload should be { skill: "Skill Name" }
-export const removeSkill = (payload) => api.post("/api/skills/remove", payload); // Payload should be { skill: "Skill Name" }
-export const getSkillSuggestions = (query) => api.get(`/api/skills/suggestions?query=${encodeURIComponent(query)}`); // For autocomplete
-export const getAllSkills = () => api.get("/api/skills/all"); // Get all available skills
-
-// --- Resume Endpoints ---
-export const uploadResume = (formData) =>
-  api.post("/api/resume/upload", formData, {
-    headers: { "Content-Type": "multipart/form-data" }, // Essential for file uploads
-    timeout: 30000, // 30 second timeout for file uploads
-  });
-
-// --- Analysis Endpoints ---
-export const evaluateSkills = (payload) => api.post("/api/analysis/evaluate", payload); // Payload should be { skills: ["skill1", "skill2"] }
-export const getAnalysisHistory = () => api.get("/api/history"); // Fetches the user's analysis history
-
-// --- Utility Endpoints ---
-export const ping = () => api.get("/api/ping"); // Simple endpoint to check if the backend is alive
-// --- ATS Score Endpoints ---
-export const analyzeATSScore = (payload) =>
-  api.post("/api/ats/analyze", payload); 
-// Payload could be { resume_text: "...", job_description: "..." }
-
-// --- Job Search Endpoints ---
-export const searchJobs = (skills) =>
-  api.post("/api/jobs/search", { skills });
-// Payload could be { skills: ["Python", "React", "SQL"] }
-// Export default for backward compatibility
-
-export const getJobOutlook = (job_title) =>
-  api.post("/api/job_outlook", { job_title });
+// Skills
+export const listSkills = () => api.get('/skills');
+export const addSkill = (skillData) => api.post('/skills/add', skillData);
+export const removeSkill = (skillData) => api.post('/skills/remove', skillData);
+export const getSkillSuggestions = (query) => api.get(`/skills/suggestions?query=${query}`);
+export const evaluateSkills = (skillsData) => api.post('/analysis/evaluate', skillsData);
+export const postEmployerJobOutlook = (jobTitle) => api.post('/job_outlook', { job_title: jobTitle });
+export const getAnalysisHistory = () => api.get('/history');
+export const suggestJobSkills = (jobData) => api.post('/employer/job_skills/suggest', jobData);
 
 
-export default {
-  signup,
-  login,
-  logout,
-  getCurrentUser,
-  listSkills,
-  addSkill,
-  removeSkill,
-  getSkillSuggestions,
-  getAllSkills,
-  uploadResume,
-  evaluateSkills,
-  getAnalysisHistory,
-  ping,
-  analyzeATSScore,  
-  searchJobs,     
+// Resume
+export const uploadResume = (formData) => api.post('/resume/upload', formData, {
+  headers: {
+    'Content-Type': 'multipart/form-data',
+  },
+});
+
+// ATS
+export const analyzeATSScore = (resumeText, jobDescription) => api.post('/ats/analyze', { resume_text: resumeText, job_description: jobDescription });
+
+
+// Jobs (Internal & External)
+export const searchJobs = (searchParams) => api.post('/jobs/search', searchParams);
+export const applyForJob = (jobId) => api.post(`/jobs/apply/${jobId}`);
+export const getAppliedJobs = () => api.get('/jobs/applied-jobs');
+
+
+// Employer Specific
+export const postEmployerJob = (jobData) => api.post('/employer/post_job', jobData);
+export const getMyJobs = () => api.get('/employer/my-jobs');
+export const getJobApplicants = (jobId) => api.get(`/employer/job-applicants/${jobId}`);
+export const deleteJob = (jobId) => api.delete(`/employer/delete-job/${jobId}`);
+export const analyzeCandidateATS = (jobId, candidateId) => api.post(`/employer/analyze-candidate/${jobId}`, { candidate_id: candidateId });
+
+
+// -----------------------------------------------------------------------------
+// Socket.IO Client Setup
+// -----------------------------------------------------------------------------
+let socket = null;
+
+export const connectSocket = (userId) => {
+  if (!socket || !socket.connected) {
+    socket = io(API_BASE_URL.replace('/api', ''), {
+      transports: ['websocket', 'polling'], // Ensure compatibility
+      auth: {
+        token: localStorage.getItem('access_token') // Send JWT with connection if needed
+      }
+    });
+
+    socket.on('connect', () => {
+      console.log('Socket connected');
+      if (userId) {
+        socket.emit('join_room', { user_id: userId });
+      }
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Socket disconnected');
+    });
+
+    socket.on('new_notification', (notification) => {
+      console.log('Received new notification:', notification);
+      toast.info(notification.message, {
+        onClick: () => {
+          if (notification.link) {
+            window.location.href = notification.link;
+          }
+          markNotificationRead(notification.id); // Mark as read on click
+        },
+        autoClose: 10000, // Keep open for 10 seconds
+        closeButton: true
+      });
+      // You might also want to refetch notifications in the UI here
+    });
+
+    socket.on('status', (data) => {
+      console.log('Socket status:', data.msg);
+    });
+  }
+  return socket;
 };
 
-
-export const postJob = async (jobData) => {
-  return axios.post('/api/jobs', jobData, {
-    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-  });
-};
-
-export const getJobs = async () => {
-  return axios.get('/api/jobs', {
-    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-  });
-};
+export const getSocket = () => socket;
+// Add to api.js
+export const mapSkill = (skillData) => api.post('/skills/map', skillData);

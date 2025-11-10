@@ -1,119 +1,91 @@
 import React, { useState } from 'react';
+import { Button } from './ui/button'; // Assuming you have shadcn-ui button
+import { Input } from './ui/input';   // Assuming you have shadcn-ui input
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"; // Add for role selection
 
-// Authentication Component
-const AuthModal = ({ show, onClose, onAuth, isDark, loading }) => {
+const AuthModal = ({ isDark, onClose, onAuth, loading, error }) => {
   const [isSignup, setIsSignup] = useState(false);
-  const [form, setForm] = useState({ email: '', password: '', name: '', role: 'user' });
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [role, setRole] = useState('employee'); // Default role
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    await onAuth({ ...form, isSignup });
-    setForm({ email: '', password: '', name: '', role: 'user' });
+    onAuth({ email, password, name, role, isSignup });
   };
 
-  if (!show) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className={`p-8 rounded-xl border-2 w-full max-w-md mx-4 ${isDark ? 'border-cyan-400/30 bg-slate-800' : 'border-slate-300 bg-white'}`}>
-        <h2 className={`text-xl font-bold mb-6 ${isDark ? 'text-cyan-300' : 'text-slate-700'}`}>
-          {isSignup ? 'Create Account' : 'Welcome Back'}
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${isDark ? 'bg-black/70' : 'bg-gray-900/70'}`}>
+      <div className={`relative w-full max-w-md rounded-lg shadow-xl p-6 ${isDark ? 'bg-slate-800 text-white' : 'bg-white text-slate-800'}`}>
+        <button
+          onClick={onClose}
+          className={`absolute top-3 right-3 text-lg font-bold ${isDark ? 'text-cyan-400' : 'text-blue-600'}`}
+          aria-label="Close" // Added for accessibility
+        >
+          &times;
+        </button>
+        <h2 className="text-2xl font-bold mb-6 text-center">
+          {isSignup ? 'Sign Up' : 'Login'}
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {isSignup && (
-            <>
-              <input
-                type="text"
-                placeholder="Full Name"
-                value={form.name}
-                onChange={(e) => setForm({...form, name: e.target.value})}
-                className={`w-full px-4 py-3 rounded-lg border ${
-                  isDark
-                    ? 'border-cyan-400/30 bg-slate-900/50 text-cyan-300 placeholder-cyan-500/50'
-                    : 'border-slate-300 bg-white text-slate-700 placeholder-slate-400'
-                } outline-none focus:border-cyan-400`}
-                required
-              />
-              <select
-                value={form.role}
-                onChange={(e) => setForm({...form, role: e.target.value})}
-                className={`w-full px-4 py-3 rounded-lg border ${
-                  isDark
-                    ? 'border-cyan-400/30 bg-slate-900/50 text-cyan-300'
-                    : 'border-slate-300 bg-white text-slate-700'
-                } outline-none focus:border-cyan-400`}
-              >
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-                <option value="expert">Expert</option>
-              </select>
-            </>
+            <Input
+              type="text"
+              placeholder="Name (Optional)"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={isDark ? 'bg-slate-700 border-cyan-400/20 text-white' : 'border-slate-300'}
+            />
           )}
-
-          <input
+          <Input
             type="email"
             placeholder="Email"
-            value={form.email}
-            onChange={(e) => setForm({...form, email: e.target.value})}
-            className={`w-full px-4 py-3 rounded-lg border ${
-              isDark
-                ? 'border-cyan-400/30 bg-slate-900/50 text-cyan-300 placeholder-cyan-500/50'
-                : 'border-slate-300 bg-white text-slate-700 placeholder-slate-400'
-            } outline-none focus:border-cyan-400`}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             required
+            className={isDark ? 'bg-slate-700 border-cyan-400/20 text-white' : 'border-slate-300'}
           />
-
-          <input
+          <Input
             type="password"
             placeholder="Password"
-            value={form.password}
-            onChange={(e) => setForm({...form, password: e.target.value})}
-            className={`w-full px-4 py-3 rounded-lg border ${
-              isDark
-                ? 'border-cyan-400/30 bg-slate-900/50 text-cyan-300 placeholder-cyan-500/50'
-                : 'border-slate-300 bg-white text-slate-700 placeholder-slate-400'
-            } outline-none focus:border-cyan-400`}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             required
+            className={isDark ? 'bg-slate-700 border-cyan-400/20 text-white' : 'border-slate-300'}
           />
-
-          <div className="flex gap-4">
-            <button
-              type="submit"
-              disabled={loading}
-              className={`flex-1 py-3 rounded-lg border-2 ${
-                isDark
-                  ? 'border-cyan-400/30 hover:border-cyan-400 text-cyan-400'
-                  : 'border-slate-300 hover:border-slate-400 text-slate-600'
-              } transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {loading ? 'Processing...' : (isSignup ? 'Sign Up' : 'Login')}
-            </button>
-
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              className={`px-6 py-3 rounded-lg border ${
-                isDark
-                  ? 'border-red-400/30 hover:border-red-400 text-red-400'
-                  : 'border-red-300 hover:border-red-400 text-red-600'
-              } transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              Cancel
-            </button>
-          </div>
+          {isSignup && (
+            <Select onValueChange={setRole} defaultValue={role}>
+              <SelectTrigger className={isDark ? 'bg-slate-700 border-cyan-400/20 text-white' : 'border-slate-300'}>
+                <SelectValue placeholder="Select Role" />
+              </SelectTrigger>
+              <SelectContent className={isDark ? 'bg-slate-700 text-white' : ''}>
+                <SelectItem value="employee">Employee</SelectItem>
+                <SelectItem value="employer">Employer</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+          <Button
+            type="submit"
+            className={`w-full ${isDark ? 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600' : 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600'}`}
+            disabled={loading}
+          >
+            {loading ? 'Loading...' : (isSignup ? 'Sign Up' : 'Login')}
+          </Button>
         </form>
 
-        <button
-          onClick={() => setIsSignup(!isSignup)}
-          disabled={loading}
-          className={`mt-4 text-sm w-full text-center ${
-            isDark ? 'text-cyan-400 hover:text-cyan-300' : 'text-slate-600 hover:text-slate-500'
-          } transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          {isSignup ? 'Already have an account? Login' : 'Need an account? Sign up'}
-        </button>
+        <p className={`mt-4 text-center text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+          {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
+          <button
+            type="button" // Explicitly set type to "button"
+            onClick={() => setIsSignup(!isSignup)}
+            className={`font-semibold ${isDark ? 'text-cyan-400 hover:text-cyan-300' : 'text-blue-600 hover:text-blue-500'}`}
+          >
+            {isSignup ? 'Login' : 'Sign Up'}
+          </button>
+        </p>
       </div>
     </div>
   );
