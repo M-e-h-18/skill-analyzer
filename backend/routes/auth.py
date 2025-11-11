@@ -28,6 +28,8 @@ def signup():
         role=role
         # created_at is set automatically by default in the model
     )
+    user.name = data.get('name', user.name) # Ensure 'name' is being set here
+
     user.save()
     
     return jsonify({"msg": f"{role.capitalize()} created successfully"}), 201

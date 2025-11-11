@@ -1,3 +1,5 @@
+// api.js
+
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import io from 'socket.io-client';
@@ -65,6 +67,23 @@ export const postEmployerJobOutlook = (jobTitle) =>
 export const getAnalysisHistory = () => api.get('/history').then(res => res.data);
 export const suggestJobSkills = (jobData) => api.post('/employer/job_skills/suggest', jobData).then(res => res.data);
 
+// Messaging
+export const sendMessagingRequest = (data) => api.post('/messaging/send-request', data);
+export const getMessagingRequests = () => api.get('/messaging/requests');
+export const respondToMessagingRequest = (requestId, action) => 
+  api.post(`/messaging/requests/${requestId}/respond`, { action });
+export const getConversations = () => api.get('/messaging/conversations');
+export const getConversationMessages = (conversationId) => 
+  api.get(`/messaging/conversations/${conversationId}/messages`);
+export const sendMessage = (conversationId, content) => 
+  api.post(`/messaging/conversations/${conversationId}/send`, { content });
+
+// NEW: Employer Sent Messaging Requests
+export const getEmployerSentRequests = () => api.get('/employer/sent-requests').then(res => res.data);
+
+// Update application status
+export const updateApplicationStatus = (jobId, candidateId, status) =>
+  api.put(`/employer/application/${jobId}/${candidateId}/status`, { status });
 // Resume
 export const uploadResume = (formData) =>
   api.post('/resume/upload', formData, {

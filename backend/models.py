@@ -1,5 +1,6 @@
 from pymongo import MongoClient
 from mongoengine import *
+from bson import ObjectId
 from datetime import datetime
 
 from config import MONGODB_URI, MONGO_DBNAME
@@ -30,8 +31,8 @@ class Notification(EmbeddedDocument):
     message = StringField(required=True)
     timestamp = DateTimeField(default=datetime.utcnow)
     read = BooleanField(default=False)
-    type = StringField(default="info")  # e.g., "job_application", "skill_suggestion", "alert"
-    link = StringField(default="")  # Optional link to relevant page
+    type = StringField(default="info")
+    link = StringField(default="")
 
 class CandidateApplication(EmbeddedDocument):
     candidate_id = ObjectIdField(required=True)
@@ -46,6 +47,72 @@ class CandidateApplication(EmbeddedDocument):
     missing_skills = ListField(StringField(), default=list)
     applied_at = DateTimeField(default=datetime.utcnow)
     status = StringField(default="Pending")  # e.g., Pending, Reviewed, Interview, Rejected
+
+class MessagingRequest(EmbeddedDocument):
+    id = ObjectIdField(default=ObjectId, required=True)
+    from_user_id = StringField(required=True)
+    from_user_name = StringField()
+    from_user_email = StringField()
+    job_id = StringField()
+    job_title = StringField()
+    message = StringField()
+    status = StringField(default='pending')  # pending, accepted, rejected
+    created_at = DateTimeField(default=datetime.utcnow)
+
+    def to_json(self):
+        return {
+            'id': str(self.id),
+            'from_user_id': self.from_user_id,
+            'from_user_name': self.from_user_name,
+            'from_user_email': self.from_user_email,
+            'job_id': self.job_id,
+            'job_title': self.job_title,
+            'message': self.message,
+            'status': self.status,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+class Message(EmbeddedDocument):
+    id = ObjectIdField(default=ObjectId, required=True)
+    sender_id = StringField(required=True)
+    sender_name = StringField()
+    content = StringField(required=True)
+    timestamp = DateTimeField(default=datetime.utcnow)
+    read = BooleanField(default=False)
+    
+    def to_json(self):
+        return {
+            'id': str(self.id),
+            'sender_id': self.sender_id,
+            'sender_name': self.sender_name,
+            'content': self.content,
+            'timestamp': self.timestamp.isoformat() if self.timestamp else None,
+            'read': self.read
+        }
+
+class Conversation(EmbeddedDocument):
+    id = ObjectIdField(default=ObjectId, required=True)
+    participant_id = StringField(required=True)
+    participant_name = StringField()
+    participant_email = StringField()
+    job_id = StringField()
+    job_title = StringField()
+    messages = ListField(EmbeddedDocumentField(Message))
+    last_message_at = DateTimeField(default=datetime.utcnow)
+    unread_count = IntField(default=0)
+    
+    def to_json(self):
+        return {
+            'id': str(self.id),
+            'participant_id': self.participant_id,
+            'participant_name': self.participant_name,
+            'participant_email': self.participant_email,
+            'job_id': self.job_id,
+            'job_title': self.job_title,
+            'messages': [msg.to_json() for msg in self.messages],
+            'last_message_at': self.last_message_at.isoformat() if self.last_message_at else None,
+            'unread_count': self.unread_count
+        }
 
 # ------------------ Documents ------------------
 
@@ -64,12 +131,13 @@ class User(Document):
     skills = ListField(StringField(), default=list)
     analysis_history = ListField(EmbeddedDocumentField(AnalysisHistory), default=list)
     last_resume_analysis = EmbeddedDocumentField(ResumeAnalysis, default=ResumeAnalysis)
-    resume = StringField(default="")  # <-- Add this line to store resume text
+    resume = StringField(default="")
     applied_jobs = ListField(ObjectIdField(), default=list)
     notifications = ListField(EmbeddedDocumentField(Notification), default=list)
+    messaging_requests = ListField(EmbeddedDocumentField(MessagingRequest))
+    conversations = ListField(EmbeddedDocumentField(Conversation))
 
     meta = {'collection': 'users'}
-
 
 class JobPosting(Document):
     posted_by = ReferenceField(User, required=True, reverse_delete_rule=CASCADE)

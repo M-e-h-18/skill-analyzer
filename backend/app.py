@@ -1309,6 +1309,10 @@ app.register_blueprint(jobs_bp, url_prefix='/api/jobs')
 app.register_blueprint(external_jobs)
 app.register_blueprint(employer_bp, url_prefix="/api/employer")
 app.register_blueprint(ats_bp)
+# Add this import
+from routes.messaging import messaging_bp
 
+# Register blueprint (add this with other blueprint registrations)
+app.register_blueprint(messaging_bp)
 if __name__ == "__main__":
     socketio.run(app, debug=True, port=5000, use_reloader=False)

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GitBranch, User, LogOut, FileText, Briefcase, Upload, Target, Search, ExternalLink, ChevronRight, AlertCircle, CheckSquare } from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
+import MessagingPanel from './components/MessagingPanel';
 
 import * as api from './api/api';
 import EmployerDashboard from "./components/EmployerDashboard";
@@ -393,13 +395,13 @@ const SkillAnalyzerApp = () => {
 
   const tabs = user?.role === 'employer' 
     ? [
-        { id: 'employer', label: 'Dashboard', icon: Briefcase }
       ]
     : [
         { id: 'skills', label: 'Skills & Analysis', icon: GitBranch },
         { id: 'ats', label: 'ATS Score', icon: Target },
         { id: 'jobs', label: 'Job Search', icon: Search },
-        { id: 'applications', label: 'My Applications', icon: CheckSquare }
+        { id: 'applications', label: 'My Applications', icon: CheckSquare },
+        { id: 'messages', label: 'Messages', icon: MessageCircle }
       ];
 
   return (
@@ -578,6 +580,11 @@ const SkillAnalyzerApp = () => {
                       </button>
                     </div>
                   )}
+                </div>
+              )}
+              {activeTab === 'messages' && (
+                <div className="col-span-2">
+                  <MessagingPanel isDark={isDark} user={user} />
                 </div>
               )}
             </>
