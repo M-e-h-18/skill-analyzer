@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GitBranch, User, LogOut, FileText, Briefcase, Upload, Target, Search, ExternalLink, ChevronRight, AlertCircle } from 'lucide-react';
+import { GitBranch, User, LogOut, FileText, Briefcase, Upload, Target, Search, ExternalLink, ChevronRight, AlertCircle, CheckSquare } from 'lucide-react';
+
 import * as api from './api/api';
 import EmployerDashboard from "./components/EmployerDashboard";
 import { Users } from "lucide-react";
 import JobSearch from './components/JobSearch';
+import MyApplications from './components/MyApplications';
 import { toast } from 'react-toastify';
-import { analyzeATSScore } from './api/api';
+
 import 'react-toastify/dist/ReactToastify.css';
 
 // Import existing components
-import AuthModal from './components/AuthModal'; // Make sure this path is correct
+import AuthModal from './components/AuthModal';
 import ThemeToggle from './components/ThemeToggle';
 import ExportButtons from './components/ExportButtons';
 import ResumeUpload from './components/ResumeUpload';
@@ -17,185 +19,111 @@ import SkillsInput from './components/SkillsInput';
 import GraphView from './components/GraphView';
 import AnalysisPanel from './components/AnalysisPanel';
 import JobOutlookModal from './components/JobOutlookModal';
+import ATSScoreAnalyzer from './components/ATSScoreAnalyzer';
 
-// New ATS Score Component (kept as is)
-const ATSScoreAnalyzer = ({ isDark, resumeFile, skills }) => {
-  const [jobDescription, setJobDescription] = useState('');
-  const [atsScore, setAtsScore] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [showResults, setShowResults] = useState(false);
-  const [matchedSkills, setMatchedSkills] = useState([]);
-  const [requiredSkills, setRequiredSkills] = useState([]);
 
-  const analyzeATS = async () => {
-    if (!resumeFile || !jobDescription) {
-      toast.error('Please provide both resume and job description');
-      return;
-    }
+export const TECHNICAL_SKILLS = [
+  // Programming Languages
+  'JavaScript', 'TypeScript', 'Python', 'Java', 'C', 'C++', 'C#', 'Go', 'Rust', 'Ruby', 'PHP', 'Scala', 'Kotlin', 'Swift', 'Objective-C', 'R', 'Perl', 'MATLAB', 'Dart', 'Shell Scripting',
 
-    setLoading(true);
-    try {
-      // Read resume file content
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const resumeText = e.target.result;
+  // Frontend Frameworks / Libraries
+  'React', 'React.js', 'Redux', 'Vue.js', 'Angular', 'Next.js', 'Nuxt.js', 'Svelte', 'Bootstrap', 'Tailwind CSS', 'Material-UI', 'jQuery', 'Chakra UI', 'Ember.js',
 
-        const response = await analyzeATSScore(resumeText, jobDescription);
+  // Backend Frameworks / Libraries
+  'Node.js', 'Express', 'NestJS', 'Django', 'Flask', 'Spring', 'Spring Boot', 'Laravel', 'Ruby on Rails', 'ASP.NET', 'FastAPI', 'Phoenix', 'Koa.js',
 
-        if (response) {
-          setAtsScore(response.score);
-          setMatchedSkills(response.matched_skills || []);
-          setRequiredSkills(response.required_skills || []);
-          setShowResults(true);
-        }
-      };
+  // Databases
+  'MySQL', 'PostgreSQL', 'MongoDB', 'Redis', 'Cassandra', 'SQLite', 'Oracle', 'MariaDB', 'Firebase', 'DynamoDB', 'Elasticsearch', 'Neo4j', 'InfluxDB', 'CockroachDB', 'GraphQL', 'Prisma',
 
-      reader.readAsText(resumeFile);
-    } catch (error) {
-      console.error('ATS Analysis failed:', error);
-      toast.error('Failed to analyze ATS score');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Cloud / DevOps
+  'AWS', 'Azure', 'GCP', 'Docker', 'Kubernetes', 'Terraform', 'Ansible', 'Jenkins', 'CircleCI', 'Travis CI', 'GitHub Actions', 'CloudFormation', 'Serverless Framework', 'Helm', 'Prometheus', 'Grafana', 'ELK Stack',
 
-  const getScoreColor = (score) => {
-    if (score >= 80) return 'text-green-500';
-    if (score >= 60) return 'text-yellow-500';
-    return 'text-red-500';
-  };
+  // Testing / QA
+  'Jest', 'Mocha', 'Chai', 'Cypress', 'Selenium', 'PyTest', 'JUnit', 'Enzyme', 'React Testing Library', 'TestNG', 'Postman', 'Swagger', 'REST Assured',
 
-  return (
-    <div className={`p-4 ${isDark ? 'text-white' : 'text-gray-800'}`}>
-      <h2 className="text-2xl font-bold mb-4">ATS Score Analyzer</h2>
+  // Mobile Development
+  'React Native', 'Flutter', 'Swift', 'Kotlin', 'Objective-C', 'Xamarin', 'Ionic', 'Cordova',
 
-      <textarea
-        className={`w-full p-2 mb-4 rounded ${isDark ? 'bg-gray-700' : 'bg-white'}`}
-        rows="6"
-        placeholder="Paste job description here..."
-        value={jobDescription}
-        onChange={(e) => setJobDescription(e.target.value)}
-      />
+  // Data Science / AI / ML
+  'TensorFlow', 'PyTorch', 'Keras', 'Scikit-learn', 'Pandas', 'NumPy', 'Matplotlib', 'Seaborn', 'OpenCV', 'NLTK', 'SpaCy', 'Hugging Face Transformers', 'XGBoost', 'LightGBM', 'CatBoost', 'Plotly', 'Dash', 'MLflow', 'Apache Spark', 'Hadoop', 'BigQuery',
 
-      <button
-        onClick={analyzeATS}
-        disabled={loading}
-        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-      >
-        {loading ? 'Analyzing...' : 'Analyze ATS Score'}
-      </button>
+  // Software Architecture / Patterns
+  'Microservices', 'Monolithic', 'MVC', 'MVVM', 'Clean Architecture', 'SOA', 'CQRS', 'Event-driven Architecture', 'REST API', 'GraphQL API', 'gRPC',
 
-      {showResults && (
-        <div className="mt-4">
-          <h3 className="text-xl font-semibold">Results:</h3>
-          <p className="text-lg">
-            ATS Score:
-            <span className={getScoreColor(atsScore)}>
-              {' '}{atsScore}%
-            </span>
-          </p>
+  // Version Control / Collaboration
+  'Git', 'GitHub', 'GitLab', 'Bitbucket', 'SVN', 'Mercurial',
 
-          <div className="mt-2">
-            <h4 className="font-semibold">Matched Skills:</h4>
-            <div className="flex flex-wrap gap-2">
-              {matchedSkills.map((skill, index) => (
-                <span key={index} className="bg-green-500 text-white px-2 py-1 rounded">
-                  {skill}
-                </span>
-              ))}
-            </div>
-          </div>
+  // UI/UX / Design
+  'Figma', 'Adobe XD', 'Sketch', 'InVision', 'Canva', 'Zeplin', 'Photoshop', 'Illustrator',
 
-          <div className="mt-2">
-            <h4 className="font-semibold">Required Skills:</h4>
-            <div className="flex flex-wrap gap-2">
-              {requiredSkills.map((skill, index) => (
-                <span
-                  key={index}
-                  className={`px-2 py-1 rounded ${
-                    matchedSkills.includes(skill)
-                      ? 'bg-green-500 text-white'
-                      : 'bg-red-500 text-white'
-                  }`}
-                >
-                  {skill}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+  // Networking / Security
+  'TCP/IP', 'HTTP', 'HTTPS', 'REST', 'SOAP', 'OAuth', 'JWT', 'SSL/TLS', 'Firewall', 'Penetration Testing', 'Vulnerability Assessment', 'Cybersecurity', 'VPN', 'IDS/IPS', 'Active Directory', 'LDAP',
 
+  // Misc / Tools / Others
+  'Linux', 'Unix', 'Windows', 'MacOS', 'Bash', 'PowerShell', 'Vim', 'Emacs', 'VS Code', 'IntelliJ IDEA', 'Eclipse', 'PyCharm', 'NetBeans', 'WebStorm', 'JIRA', 'Confluence', 'Trello', 'Notion', 'Slack', 'Docker Compose', 'Apache Kafka', 'RabbitMQ', 'MQTT', 'Redis Streams', 'Elixir', 'Julia', 'Assembly', 'COBOL', 'Fortran', 'Blockchain', 'Solidity', 'Ethereum', 'Hyperledger', 'Smart Contracts', 'NFT', 'Web3.js', 'IPFS', 'Three.js', 'D3.js', 'Chart.js', 'Highcharts', 'Unity', 'Unreal Engine', 'Game Development', 'AR/VR', 'OpenGL', 'DirectX'
+];
 
 // Main Application Component with Tabs
 const SkillAnalyzerApp = () => {
 
   const [isDark, setIsDark] = useState(true);
-  const [activeTab, setActiveTab] = useState('skills'); // 'skills', 'ats', 'jobs'
+  const [activeTab, setActiveTab] = useState('skills');
   const [skills, setSkills] = useState([]);
   const [analysis, setAnalysis] = useState([]);
   const [bestJobTitle, setBestJobTitle] = useState('');
   const [jobOutlook, setJobOutlook] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
-  const [user, setUser] = useState(null); // Uncommented
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [error, setError] = useState('');
   const [resumeFile, setResumeFile] = useState(null);
   const svgRef = useRef();
   const [showJobOutlook, setShowJobOutlook] = useState(false);
-  // const [userRole, setUserRole] = useState(null); // Keep or remove based on actual usage, `user.role` is usually sufficient
+  const [jobDescription, setJobDescription] = useState('');
 
-
-  // Re-enabled and updated useEffect for authentication check
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem('access_token'); // Ensure this matches your API
+      const token = localStorage.getItem('access_token');
       if (token) {
         try {
-          const response = await api.getCurrentUser(); // Your API call to get user details
+          const response = await api.getCurrentUser();
           setUser(response.data.user);
-          // setUserRole(response.data.user.role); // If you use a separate userRole state
         } catch (error) {
           console.error('Auth check failed:', error);
           localStorage.removeItem('access_token');
           setUser(null);
-          // setUserRole(null);
         }
       }
     };
     checkAuth();
-  }, []); // Run once on component mount
+  }, []);
 
   useEffect(() => {
     const fetchUserSkills = async () => {
       if (user && user.id) {
         try {
           const response = await api.listSkills();
-          setSkills(response.data.skills || []);
+          setSkills(response.skills || []);
         } catch (error) {
           console.error("Error fetching user skills:", error);
           if (error.response && error.response.status === 401) {
-            handleLogout(); // Log out if token is invalid
+            handleLogout();
           }
         }
       } else {
-        // If no user, clear skills to prevent showing skills from previous logged-in sessions
         setSkills([]);
       }
     };
     fetchUserSkills();
-  }, [user]); // Depend on user changing
+  }, [user]);
 
   useEffect(() => {
     if (skills.length > 0) {
       setAnalysisLoading(true);
       api.evaluateSkills({ skills })
         .then(response => {
-          const analysisData = response.data.analysis || [];
+          const analysisData = response.analysis || [];
           setAnalysis(analysisData);
           setError('');
 
@@ -214,24 +142,22 @@ const SkillAnalyzerApp = () => {
         });
     } else {
       setAnalysis([]);
-      setBestJobTitle(''); // Clear best job title if no skills
+      setBestJobTitle('');
     }
   }, [skills]);
 
-
   useEffect(() => {
     if (bestJobTitle) {
-      api.postEmployerJobOutlook({job_title: bestJobTitle}) // Ensure the payload matches your API
-        .then(res => setJobOutlook(res.data))
+      api.postEmployerJobOutlook({job_title: bestJobTitle})
+        .then(res => setJobOutlook(res))
         .catch(err => {
           console.error('Failed to fetch job outlook:', err);
           setJobOutlook(null);
         });
     } else {
-      setJobOutlook(null); // Clear outlook if no best job title
+      setJobOutlook(null);
     }
   }, [bestJobTitle]);
-
 
   const handleAddSkill = async (skillName) => {
     if (skillName && !skills.includes(skillName)) {
@@ -240,14 +166,14 @@ const SkillAnalyzerApp = () => {
 
         try {
           const res = await api.mapSkill({ skill: skillName });
-          if (res.data?.mapped_skill) {
-            mappedSkill = res.data.mapped_skill;
+          if (res?.mapped_skill) {
+            mappedSkill = res.mapped_skill;
           }
         } catch (err) {
           console.warn("Gemini mapping failed, keeping original:", skillName);
         }
 
-        if (user) { // Only call API if user is logged in
+        if (user) {
           await api.addSkill({ skill: mappedSkill });
         }
 
@@ -257,7 +183,6 @@ const SkillAnalyzerApp = () => {
         console.error("Error adding skill:", error);
         setError('Failed to add skill. Please try again.');
 
-        // Allow adding to local state even if not logged in (for demo purposes)
         if (!user) {
           setSkills((prev) => [...prev, skillName]);
         }
@@ -267,7 +192,7 @@ const SkillAnalyzerApp = () => {
 
   const handleRemoveSkill = async (skillToRemove) => {
     try {
-      if (user) { // Only call API if user is logged in
+      if (user) {
         await api.removeSkill({ skill: skillToRemove });
       }
       setSkills(prevSkills => prevSkills.filter(skill => skill !== skillToRemove));
@@ -276,7 +201,6 @@ const SkillAnalyzerApp = () => {
       console.error("Error removing skill:", error);
       setError('Failed to remove skill. Please try again.');
 
-      // Allow removing from local state even if not logged in
       if (!user) {
         setSkills(prevSkills => prevSkills.filter(skill => skill !== skillToRemove));
       }
@@ -285,10 +209,10 @@ const SkillAnalyzerApp = () => {
 
   const handleResetSkills = async () => {
     try {
-      if (user) { // Only call API if user is logged in
+      if (user) {
         const currentSkills = [...skills];
         for (const skill of currentSkills) {
-          await api.removeSkill({ skill }); // Assuming your backend can handle multiple removes or you iterate
+          await api.removeSkill({ skill });
         }
       }
       setSkills([]);
@@ -313,7 +237,6 @@ const SkillAnalyzerApp = () => {
     }
   };
 
-  // Re-enabled and updated handleAuth
   const handleAuth = async (authData) => {
     setLoading(true);
     setError('');
@@ -323,17 +246,31 @@ const SkillAnalyzerApp = () => {
           email: authData.email,
           password: authData.password,
           name: authData.name,
-          role: authData.role || 'employee' // Default to employee role
+          role: authData.role || 'employee'
         });
         const loginResponse = await api.login({ email: authData.email, password: authData.password });
-        setUser(loginResponse.data.user);
-        // setUserRole(loginResponse.data.user.role); // If you use a separate userRole state
-        localStorage.setItem('access_token', loginResponse.data.access_token); // Store the token
+        
+        const userData = loginResponse?.data?.user || loginResponse?.user;
+        const accessToken = loginResponse?.data?.access_token || loginResponse?.access_token;
+        
+        if (userData && accessToken) {
+          setUser(userData);
+          localStorage.setItem('access_token', accessToken);
+        } else {
+          throw new Error('Invalid response structure from login');
+        }
       } else {
         const response = await api.login({ email: authData.email, password: authData.password });
-        setUser(response.data.user);
-        // setUserRole(response.data.user.role); // If you use a separate userRole state
-        localStorage.setItem('access_token', response.data.access_token); // Store the token
+        
+        const userData = response?.data?.user || response?.user;
+        const accessToken = response?.data?.access_token || response?.access_token;
+        
+        if (userData && accessToken) {
+          setUser(userData);
+          localStorage.setItem('access_token', accessToken);
+        } else {
+          throw new Error('Invalid response structure from login');
+        }
       }
       setShowAuth(false);
       toast.success(authData.isSignup ? "Signup successful!" : "Login successful!");
@@ -341,19 +278,17 @@ const SkillAnalyzerApp = () => {
       console.error('Auth failed:', error);
       const errorMessage = error.response?.data?.msg || error.message || 'Authentication failed';
       setError(errorMessage);
-      toast.error(`Authentication failed: ${errorMessage}`); // Use toast for errors too
+      toast.error(`Authentication failed: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Re-enabled handleLogout
   const handleLogout = () => {
-    api.logout(); // This should clear the token on the backend if needed, or simply clear local storage
-    localStorage.removeItem('access_token'); // Clear token from local storage
+    api.logout();
+    localStorage.removeItem('access_token');
     setUser(null);
-    // setUserRole(null);
-    setSkills([]); // Clear skills on logout
+    setSkills([]);
     setAnalysis([]);
     setError('');
     toast.info("Logged out successfully.");
@@ -362,7 +297,7 @@ const SkillAnalyzerApp = () => {
   const handleResumeUpload = async (file) => {
     setLoading(true);
     setError('');
-    setResumeFile(file); // Store for ATS analysis
+    setResumeFile(file);
 
     try {
       const formData = new FormData();
@@ -370,8 +305,8 @@ const SkillAnalyzerApp = () => {
 
       const response = await api.uploadResume(formData);
 
-      const extractedSkills = response.data.extracted_skills || [];
-      const suggestedSkills = response.data.suggested_skills || [];
+      const extractedSkills = response.extracted_skills || [];
+      const suggestedSkills = response.suggested_skills || [];
       const allNewSkills = [...extractedSkills, ...suggestedSkills];
 
       const newSkills = [...skills];
@@ -382,7 +317,7 @@ const SkillAnalyzerApp = () => {
           newSkills.push(skill);
           addedCount++;
 
-          if (user) { // Only add to backend if user is logged in
+          if (user) {
             try {
               await api.addSkill({ skill });
             } catch (error) {
@@ -430,9 +365,6 @@ const SkillAnalyzerApp = () => {
           link.click();
         };
 
-        // You might need to adjust this depending on how your SVG is structured for styling
-        // For inline SVGs or SVGs loaded from local files, this should be fine.
-        // For external SVG resources or complex styling, you might need a more robust approach.
         img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
       } catch (error) {
         toast.error('PNG export failed. This is a demo limitation or browser security restriction.');
@@ -459,15 +391,16 @@ const SkillAnalyzerApp = () => {
     toast.info('PDF export feature would generate a career analysis report. This is a demo limitation.');
   };
 
-  const tabs = [
-    { id: 'skills', label: 'Skills & Analysis', icon: GitBranch },
-    { id: 'ats', label: 'ATS Score', icon: Target },
-    { id: 'jobs', label: 'Job Search', icon: Briefcase },
-    ...(user?.role === 'employer'
-      ? [{ id: 'employer', label: 'Employer Dashboard', icon: Users }]
-      : []),
-  ];
-
+  const tabs = user?.role === 'employer' 
+    ? [
+        { id: 'employer', label: 'Dashboard', icon: Briefcase }
+      ]
+    : [
+        { id: 'skills', label: 'Skills & Analysis', icon: GitBranch },
+        { id: 'ats', label: 'ATS Score', icon: Target },
+        { id: 'jobs', label: 'Job Search', icon: Search },
+        { id: 'applications', label: 'My Applications', icon: CheckSquare }
+      ];
 
   return (
     <div className={`min-h-screen transition-all duration-500 ${isDark ? 'bg-gradient-to-br from-slate-900 via-blue-900/20 to-slate-800' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'}`}>
@@ -532,12 +465,12 @@ const SkillAnalyzerApp = () => {
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b">
+        <div className={`flex gap-2 mb-6 border-b ${isDark ? 'border-cyan-400/20' : 'border-slate-200'} overflow-x-auto`}>
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 font-medium transition-all border-b-2 ${
+              className={`flex items-center gap-2 px-4 py-2 font-medium transition-all border-b-2 whitespace-nowrap ${
                 activeTab === tab.id
                   ? isDark
                     ? 'border-cyan-400 text-cyan-300'
@@ -553,69 +486,102 @@ const SkillAnalyzerApp = () => {
 
         {/* Tab Content */}
         <div className="grid md:grid-cols-2 gap-6">
-          {activeTab === 'skills' && (
-            <>
-              <div className="space-y-6">
-                <ResumeUpload onUpload={handleResumeUpload} isDark={isDark} />
-                <SkillsInput
-                  skills={skills}
-                  onAddSkill={handleAddSkill}
-                  onRemoveSkill={handleRemoveSkill}
-                  onReset={handleResetSkills}
-                  isDark={isDark}
-                />
-              </div>
-
-              <div>
-                <GraphView
-                  skills={skills}
-                  analysis={analysis}
-                  loading={analysisLoading}
-                  error={error}
-                  svgRef={svgRef}
-                  onSkillClick={handleSkillClick}
-                  isDark={isDark}
-                />
-
-                <AnalysisPanel analysis={analysis} isDark={isDark} />
-
-                {analysis.length > 0 && (
-                  <button
-                    className={`mt-4 px-6 py-2 rounded-lg font-semibold transition-all ${
-                      isDark
-                        ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600'
-                        : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600'
-                    }`}
-                    onClick={() => setShowJobOutlook(true)}
-                  >
-                    View Job Outlook
-                  </button>
-                )}
-              </div>
-            </>
-          )}
-
-          {activeTab === 'ats' && (
-            <div className="col-span-2">
-              <ATSScoreAnalyzer
-                isDark={isDark}
-                resumeFile={resumeFile}
-                skills={skills}
-              />
-            </div>
-          )}
-
-          {activeTab === 'jobs' && (
-            <div className="col-span-2">
-              <JobSearch isDark={isDark} skills={skills} />
-            </div>
-          )}
-          {activeTab === 'employer' && user?.role === 'employer' && (
+          {user?.role === 'employer' ? (
             <div className="col-span-2">
               <EmployerDashboard isDark={isDark} />
             </div>
-          )}
+          ) : (
+            <>
+              {activeTab === 'skills' && (
+                <>
+                  <div className="space-y-6">
+                    <ResumeUpload onUpload={handleResumeUpload} isDark={isDark} />
+                    <SkillsInput
+                      skills={skills}
+                      onAddSkill={handleAddSkill}
+                      onRemoveSkill={handleRemoveSkill}
+                      onReset={handleResetSkills}
+                      isDark={isDark}
+                    />
+                  </div>
 
+                  <div>
+                    <GraphView
+                      skills={skills}
+                      analysis={analysis}
+                      loading={analysisLoading}
+                      error={error}
+                      svgRef={svgRef}
+                      onSkillClick={handleSkillClick}
+                      isDark={isDark}
+                    />
+
+                    <AnalysisPanel analysis={analysis} isDark={isDark} />
+
+                    {analysis.length > 0 && (
+                      <button
+                        className={`mt-4 px-6 py-2 rounded-lg font-semibold transition-all ${
+                          isDark
+                            ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600'
+                            : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600'
+                        }`}
+                        onClick={() => setShowJobOutlook(true)}
+                      >
+                        View Job Outlook
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {activeTab === 'ats' && (
+                <div className="col-span-2">
+                  <ATSScoreAnalyzer
+                    isDark={isDark}
+                    skills={skills}
+                    jobDescription={jobDescription}
+                    setJobDescription={setJobDescription}
+                  />
+                </div>
+              )}
+
+              {activeTab === 'jobs' && (
+                <div className="col-span-2">
+                  <JobSearch isDark={isDark} skills={skills} />
+                </div>
+              )}
+
+              {activeTab === 'applications' && (
+                <div className="col-span-2">
+                  {user ? (
+                    <MyApplications isDark={isDark} />
+                  ) : (
+                    <div className={`rounded-xl border p-12 text-center ${
+                      isDark ? 'border-cyan-400/30 bg-slate-800/50' : 'border-slate-300 bg-white'
+                    }`}>
+                      <CheckSquare className={`w-16 h-16 mx-auto mb-4 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
+                      <h3 className={`text-xl font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                        Login Required
+                      </h3>
+                      <p className={`mb-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                        Please login to view your job applications
+                      </p>
+                      <button
+                        onClick={() => setShowAuth(true)}
+                        className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                          isDark
+                            ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600'
+                            : 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600'
+                        }`}
+                      >
+                        Login Now
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </main>
 
@@ -632,12 +598,11 @@ const SkillAnalyzerApp = () => {
 
       {/* Job Outlook Modal */}
       <JobOutlookModal
-        jobs={analysis.slice(0, 5)} // Pass relevant data to the modal
+        jobs={analysis.slice(0, 5)}
         isOpen={showJobOutlook}
         onClose={() => setShowJobOutlook(false)}
         isDark={isDark}
       />
-
     </div>
   );
 };
