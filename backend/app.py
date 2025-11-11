@@ -4,13 +4,14 @@ from pymongo import MongoClient
 import pymongo
 from mongoengine import connect, DoesNotExist, ValidationError
 from models import User, JobPosting, CandidateApplication, Notification # Import your MongoEngine models
-
+import certifi 
 from routes.external_jobs import external_jobs
 from flask_jwt_extended import (
     create_access_token, JWTManager, jwt_required, get_jwt_identity
 )
+from datetime import datetime,timezone,timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
-import os, datetime, fitz, json, re
+import os, fitz, json, re
 import google.generativeai as genai
 from dotenv import load_dotenv
 from bson import ObjectId
@@ -24,7 +25,7 @@ from routes.ats import ats_bp
 import textrazor
 import traceback
 from flask_socketio import SocketIO, emit, join_room, leave_room # Import SocketIO
-
+from models import ResumeAnalysis
 load_dotenv()
 
 ADZUNA_APP_ID = os.getenv('ADZUNA_APP_ID')
@@ -126,6 +127,10 @@ def job_outlook():
         traceback.print_exc() # Print full traceback
         return jsonify({"ok": False, "msg": f"An unexpected error occurred: {str(e)}"}), 500
 
+from routes.auth import auth_bp
+
+
+app.register_blueprint(auth_bp)
 
 def fetch_adzuna_data(job_title, country, app_id, app_key, max_age_days=None):
     """Fetch current or approximate historical Adzuna data using the search endpoint."""
@@ -272,19 +277,49 @@ def compare_countries(results):
 
 # JWT Setup
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET", "super-secret-jwt-key")
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = datetime.timedelta(hours=24)
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
 jwt = JWTManager(app)
 
 # MongoDB Setup using MongoEngine
 MONGO_URI = os.getenv("MONGODB_URI")
 MONGO_DBNAME = os.getenv("MONGO_DBNAME", "skill_graph_db")
-connect(db=MONGO_DBNAME, host=MONGO_URI)
+
+if not MONGO_URI:
+    raise Exception("❌ ERROR: MONGODB_URI not set in environment. Check backend/.env")
+
+print("📝 Connecting to MongoDB securely...")
+
+try:
+    # Secure connection using trusted CA
+    connect(
+        db=MONGO_DBNAME,
+        host=MONGO_URI,
+        alias='default',
+        tls=True,
+        tlsCAFile=certifi.where(),  # Proper CA certificate file
+        serverSelectionTimeoutMS=30000,
+        connectTimeoutMS=30000,
+        socketTimeoutMS=30000,
+        retryWrites=True,
+        w='majority'
+    )
+
+    from mongoengine import connection
+    db = connection.get_db()
+    db.command('ping')
+    print("✅ MongoDB Connected and Verified Successfully")
+
+except Exception as e:
+    print(f"❌ MongoDB Connection Failed: {e}")
+    import traceback
+    traceback.print_exc()
+    raise
 
 # Gemini API Setup
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+    gemini_model = genai.GenerativeModel("models/gemini-2.5-pro")
 else:
     print("⚠️ GEMINI_API_KEY not found. Gemini features disabled.")
     gemini_model = None
@@ -1040,8 +1075,10 @@ def upload_resume():
     file_extension = file.filename.split('.')[-1].lower()
     if file_extension != 'pdf':
         return jsonify({"ok": False, "msg": "Only PDF files are supported"}), 400
-
-    filename = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S_") + file.filename
+    
+    current_utc_time = datetime.now(timezone.utc)
+    # Format the current UTC datetime and concatenate with the original filename
+    filename = current_utc_time.strftime("%Y%m%d%H%M%S_") + file.filename
     filepath = os.path.join(UPLOAD_FOLDER, filename)
     
     try:
@@ -1104,18 +1141,21 @@ def upload_resume():
         if uid:
             try:
                 user = User.objects.get(id=uid)
-                user.skills.clear() # Clear existing skills or merge carefully
+                user.resume = raw_text  # <-- Save full resume text
+                user.skills.clear()
                 for skill in extracted_skills:
                     if skill not in user.skills:
                         user.skills.append(skill)
-                user.last_resume_analysis = {
-                    "timestamp": datetime.utcnow(),
-                    "extracted_skills": extracted_skills,
-                    "suggested_skills": suggested_skills,
-                    "skills_by_category": skills_by_category
-                }
+
+                user.last_resume_analysis = ResumeAnalysis(
+                    timestamp=datetime.utcnow(),
+                    text_preview=raw_text[:5000],
+                    extracted_skills=extracted_skills,
+                    suggested_skills=suggested_skills,
+                    skills_by_category=skills_by_category
+                )
                 user.save()
-                print(f"Saved {len(extracted_skills)} skills to user profile")
+                print(f"Saved resume and {len(extracted_skills)} skills to user profile")
             except Exception as e:
                 print(f"Database update error for resume skills: {e}")
 
@@ -1215,7 +1255,7 @@ def evaluate():
             try:
                 user = User.objects.get(id=uid)
                 user.analysis_history.append({
-                    "timestamp": datetime.utcnow(),
+                    "timestamp": datetime.timezone.now(),
                     "skills_analyzed": user_skills,
                     "results": analysis_result
                 })
