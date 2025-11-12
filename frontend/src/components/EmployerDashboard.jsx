@@ -1,18 +1,21 @@
 import React, { useEffect, useState } from "react";
-import { postEmployerJob, getMyJobs, deleteJob, getJobApplicants, analyzeCandidateATS, suggestJobSkills, updateApplicationStatus, sendMessagingRequest, getEmployerSentRequests } from "../api/api";
+import { postEmployerJob, getMyJobs, deleteJob, getJobApplicants, analyzeCandidateATS, suggestJobSkills, updateApplicationStatus, sendMessagingRequest } from "../api/api";
 import { CardHeader, CardTitle, CardDescription, Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
-import { Plus, Trash, FileText, Users, Lightbulb, XCircle, Briefcase, MessageCircle, Send, CheckCircle, UserCheck, Clock } from "lucide-react";
+import { Plus, Trash, FileText, Users, Lightbulb, XCircle, Briefcase, MessageCircle, Send, CheckCircle, UserCheck, Clock, LayoutDashboard, BarChart3 } from "lucide-react";
 import { toast } from 'react-toastify';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { Badge } from "./ui/badge";
 import { ScrollArea } from "./ui/scroll-area";
-import MessagingPanel from "./MessagingPanel"; // Assuming this is for active chats, not requests
+import MessagingPanel from "./MessagingPanel";
+import CandidateComparison from "./CandidateComparison";
 
 const EmployerDashboard = ({ isDark, user }) => {
-  const [activeTab, setActiveTab] = useState('jobs'); 
+  // Add activeTab state for navigation
+  const [activeTab, setActiveTab] = useState('dashboard');
+  
   const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
   const [candidates, setCandidates] = useState([]);
@@ -27,10 +30,6 @@ const EmployerDashboard = ({ isDark, user }) => {
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [messageText, setMessageText] = useState('');
 
-  const [sentMessageRequests, setSentMessageRequests] = useState([]);
-  const [requestsLoading, setRequestsLoading] = useState(false);
-
-
   const loadJobs = async () => {
     try {
       setLoading(true);
@@ -44,22 +43,8 @@ const EmployerDashboard = ({ isDark, user }) => {
     }
   };
 
-  const loadSentMessageRequests = async () => {
-    setRequestsLoading(true);
-    try {
-      const response = await getEmployerSentRequests();
-      setSentMessageRequests(response.requests || []);
-    } catch (err) {
-      console.error("Error fetching sent message requests:", err);
-      toast.error("Failed to load sent message requests.");
-    } finally {
-      setRequestsLoading(false);
-    }
-  };
-
   useEffect(() => {
     loadJobs();
-    loadSentMessageRequests(); // Load sent requests on component mount
   }, []);
 
   const handleJobPost = async () => {
@@ -174,7 +159,7 @@ const EmployerDashboard = ({ isDark, user }) => {
     try {
       await updateApplicationStatus(jobId, candidateId, newStatus);
       toast.success(`Application status updated to ${newStatus}`);
-      setCandidates(prev => prev.map(c =>
+      setCandidates(prev => prev.map(c => 
         c.candidate_id === candidateId ? { ...c, status: newStatus } : c
       ));
       loadJobs();
@@ -195,7 +180,6 @@ const EmployerDashboard = ({ isDark, user }) => {
       setShowMessageModal(false);
       setMessageText('');
       setSelectedCandidate(null);
-      loadSentMessageRequests(); // Reload sent requests after sending a new one
     } catch (error) {
       console.error('Error sending message request:', error);
       toast.error(error.response?.data?.msg || 'Failed to send messaging request');
@@ -245,9 +229,9 @@ const EmployerDashboard = ({ isDark, user }) => {
         {/* Tab Navigation */}
         <div className={`flex gap-4 border-b pb-4 ${isDark ? 'border-cyan-400/20' : 'border-slate-200'}`}>
           <button
-            onClick={() => setActiveTab('jobs')}
+            onClick={() => setActiveTab('dashboard')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
-              activeTab === 'jobs'
+              activeTab === 'dashboard'
                 ? isDark
                   ? 'bg-cyan-500/20 text-cyan-400'
                   : 'bg-blue-100 text-blue-700'
@@ -256,13 +240,13 @@ const EmployerDashboard = ({ isDark, user }) => {
                 : 'text-slate-600 hover:text-slate-800'
             }`}
           >
-            <Briefcase className="w-5 h-5" />
-            My Jobs
+            <LayoutDashboard className="w-5 h-5" />
+            Dashboard
           </button>
           <button
-            onClick={() => setActiveTab('requests')}
+            onClick={() => setActiveTab('comparison')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
-              activeTab === 'requests'
+              activeTab === 'comparison'
                 ? isDark
                   ? 'bg-cyan-500/20 text-cyan-400'
                   : 'bg-blue-100 text-blue-700'
@@ -271,8 +255,8 @@ const EmployerDashboard = ({ isDark, user }) => {
                 : 'text-slate-600 hover:text-slate-800'
             }`}
           >
-            <MessageCircle className="w-5 h-5" />
-            Sent Requests
+            <BarChart3 className="w-5 h-5" />
+            Compare Candidates
           </button>
           <button
             onClick={() => setActiveTab('messages')}
@@ -287,14 +271,14 @@ const EmployerDashboard = ({ isDark, user }) => {
             }`}
           >
             <MessageCircle className="w-5 h-5" />
-            Active Chats
+            Messages
           </button>
         </div>
 
         {/* Conditional Content Based on Active Tab */}
-        {activeTab === 'jobs' && (
+        {activeTab === 'dashboard' ? (
           <>
-            <h2 className={`text-3xl font-bold ${primaryTextColor}`}>My Jobs Dashboard</h2>
+            <h2 className={`text-3xl font-bold ${primaryTextColor}`}>Employer Dashboard</h2>
 
             {/* Stats Overview */}
             <div className="grid md:grid-cols-3 gap-4">
@@ -412,9 +396,9 @@ const EmployerDashboard = ({ isDark, user }) => {
                         {newJob.skills_required.map((skill, index) => (
                           <Badge key={index} className={`${badgeColors}`}>
                             {skill}
-                            <XCircle
-                              className="w-3 h-3 ml-1 cursor-pointer hover:text-red-400"
-                              onClick={() => handleRemoveSkillFromJob(skill)}
+                            <XCircle 
+                              className="w-3 h-3 ml-1 cursor-pointer hover:text-red-400" 
+                              onClick={() => handleRemoveSkillFromJob(skill)} 
                             />
                           </Badge>
                         ))}
@@ -464,7 +448,7 @@ const EmployerDashboard = ({ isDark, user }) => {
                                 onClick={() => handleFetchApplicants(job)}
                                 className={buttonSecondary}
                               >
-                                <Users className="w-4 h-4 mr-1" />
+                                <Users className="w-4 h-4 mr-1" /> 
                                 {job.applicants?.length || 0}
                               </Button>
                               <Button
@@ -485,66 +469,92 @@ const EmployerDashboard = ({ isDark, user }) => {
               </CardContent>
             </Card>
           </>
-        )}
-
-        {activeTab === 'requests' && (
-          <>
-            <h2 className={`text-3xl font-bold ${primaryTextColor}`}>Sent Messaging Requests</h2>
-            <Card className={`${cardBg} ${cardBorder}`}>
-              <CardHeader>
-                <CardTitle className={primaryTextColor}>Your Outgoing Requests</CardTitle>
-                <CardDescription className={secondaryTextColor}>Track the messaging requests you've sent to candidates.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {requestsLoading ? (
-                  <div className="flex justify-center items-center py-8">
-                    <p>Loading sent requests...</p>
-                  </div>
-                ) : sentMessageRequests.length === 0 ? (
-                  <p className="text-center italic py-8">You haven't sent any messaging requests yet.</p>
-                ) : (
-                  <div className="space-y-4">
-                    {sentMessageRequests.map((request) => (
-                      <Card key={request.id} className={`${cardBg} ${cardBorder}`}>
-                        <CardContent className="p-4">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h4 className={`text-lg font-semibold ${primaryTextColor}`}>
-                                Request to: {request.candidate_name}
-                              </h4>
-                              <p className={`text-sm ${secondaryTextColor}`}>
-                                For Job: "{request.job_title}"
-                              </p>
-                              <p className={`text-xs ${secondaryTextColor} mt-1`}>
-                                Sent: {new Date(request.sent_at).toLocaleDateString()}
-                              </p>
-                              <p className={`text-sm ${secondaryTextColor} mt-2 italic`}>
-                                Message: "{request.initial_message}"
-                              </p>
-                            </div>
-                            <Badge className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(request.status)}`}>
-                              {request.status}
-                            </Badge>
+        ) : activeTab === 'comparison' ? (
+          /* Candidate Comparison Tab */
+          <div>
+            <h2 className={`text-3xl font-bold mb-6 ${primaryTextColor}`}>Candidate Comparison & Rankings</h2>
+            
+            {jobs.length === 0 ? (
+              <div className={`rounded-xl border p-12 text-center ${isDark ? 'border-cyan-400/30 bg-slate-800/50' : 'border-slate-300 bg-white'}`}>
+                <Briefcase className={`w-16 h-16 mx-auto mb-4 ${isDark ? 'text-cyan-400/30' : 'text-blue-200'}`} />
+                <p className={`text-lg font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>No jobs posted yet</p>
+                <p className={`text-sm mt-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  Post a job first to compare candidates
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Job Selector */}
+                <Card className={`${cardBg} ${cardBorder}`}>
+                  <CardHeader>
+                    <CardTitle className={primaryTextColor}>Select a Job to Compare Candidates</CardTitle>
+                    <CardDescription className={secondaryTextColor}>Choose which job's candidates you want to compare</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {jobs.map((job) => (
+                        <div
+                          key={job.id}
+                          onClick={() => setSelectedJob(job)}
+                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                            selectedJob?.id === job.id
+                              ? isDark 
+                                ? 'border-cyan-400 bg-cyan-500/10' 
+                                : 'border-blue-500 bg-blue-50'
+                              : isDark
+                              ? 'border-slate-700 hover:border-slate-600 bg-slate-700/50'
+                              : 'border-gray-200 hover:border-gray-300 bg-gray-50'
+                          }`}
+                        >
+                          <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                            {job.title}
+                          </h3>
+                          <div className="flex items-center gap-4 mt-2">
+                            <span className={`text-sm flex items-center gap-1 ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>
+                              <Users className="w-4 h-4" />
+                              {job.applicants?.length || 0} applicants
+                            </span>
+                            {job.applicants?.length >= 2 && (
+                              <Badge className="bg-green-500/20 text-green-400">Ready to compare</Badge>
+                            )}
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </>
-        )}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
 
-        {activeTab === 'messages' && (
+                {/* Candidate Comparison Component */}
+                {selectedJob && (
+                  selectedJob.applicants && selectedJob.applicants.length >= 2 ? (
+                    <CandidateComparison jobId={selectedJob.id} isDark={isDark} />
+                  ) : (
+                    <div className={`rounded-xl border p-12 text-center ${isDark ? 'border-cyan-400/30 bg-slate-800/50' : 'border-slate-300 bg-white'}`}>
+                      <Users className={`w-16 h-16 mx-auto mb-4 ${isDark ? 'text-cyan-400/30' : 'text-blue-200'}`} />
+                      <p className={`text-lg font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                        Not enough candidates
+                      </p>
+                      <p className={`text-sm mt-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                        You need at least 2 candidates to compare for "{selectedJob.title}"
+                      </p>
+                      <p className={`text-xs mt-1 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
+                        Current applicants: {selectedJob.applicants?.length || 0}
+                      </p>
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
           <MessagingPanel isDark={isDark} user={user} />
         )}
       </div>
 
       {/* Job Applicants Dialog */}
       <Dialog open={showJobApplicants} onOpenChange={setShowJobApplicants}>
-        <DialogContent className={`${cardBg} ${cardBorder} max-w-3xl max-h-[80vh]`}>
-          <DialogHeader>
+        <DialogContent className={`${cardBg} ${cardBorder} max-w-3xl max-h-[90vh] flex flex-col`}>
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className={primaryTextColor}>
               Applicants for "{selectedJob?.title}"
             </DialogTitle>
@@ -552,18 +562,18 @@ const EmployerDashboard = ({ isDark, user }) => {
               Review candidates who have applied to this job.
             </DialogDescription>
           </DialogHeader>
-
-          {loading ? (
-            <div className="flex justify-center items-center py-8">
-              <p>Loading applicants...</p>
-            </div>
-          ) : candidates.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="italic">No applicants yet.</p>
-            </div>
-          ) : (
-            <ScrollArea className="max-h-[500px] pr-4">
-              <div className="space-y-4">
+          
+          <div className="flex-1 overflow-hidden">
+            {loading ? (
+              <div className="flex justify-center items-center py-8">
+                <p>Loading applicants...</p>
+              </div>
+            ) : candidates.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="italic">No applicants yet.</p>
+              </div>
+            ) : (
+              <div className="h-full overflow-y-auto pr-2 space-y-4" style={{ maxHeight: 'calc(90vh - 200px)' }}>
                 {candidates.map((candidate) => (
                   <Card key={candidate.candidate_id} className={`${cardBg} ${cardBorder}`}>
                     <CardContent className="p-4">
@@ -655,15 +665,15 @@ const EmployerDashboard = ({ isDark, user }) => {
                   </Card>
                 ))}
               </div>
-            </ScrollArea>
-          )}
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
       {/* Message Modal */}
       {showMessageModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className ={`rounded-xl border max-w-lg w-full ${isDark ? 'border-cyan-400/30 bg-slate-800' : 'border-slate-300 bg-white'}`}>
+          <div className={`rounded-xl border max-w-lg w-full ${isDark ? 'border-cyan-400/30 bg-slate-800' : 'border-slate-300 bg-white'}`}>
             <div className={`p-6 border-b ${isDark ? 'border-cyan-400/20' : 'border-slate-200'}`}>
               <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}> Send Messaging Request </h3>
               <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}> To: {selectedCandidate?.candidate_name} </p>

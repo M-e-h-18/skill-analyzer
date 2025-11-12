@@ -12,6 +12,7 @@ import { toast } from 'react-toastify';
 const MessagingPanel = ({ isDark, user }) => {
   const [activeTab, setActiveTab] = useState('conversations');
   const [requests, setRequests] = useState([]);
+  const [sentRequests, setSentRequests] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -45,7 +46,10 @@ const MessagingPanel = ({ isDark, user }) => {
     try {
       const response = await getMessagingRequests();
       console.log('Requests response:', response);
+      console.log('Received requests:', response.data?.requests || response.requests || []);
+      console.log('Sent requests:', response.data?.sent_requests || response.sent_requests || []);
       setRequests(response.data?.requests || response.requests || []);
+      setSentRequests(response.data?.sent_requests || response.sent_requests || []);
     } catch (error) {
       console.error('Error fetching requests:', error);
     }
@@ -120,7 +124,6 @@ const MessagingPanel = ({ isDark, user }) => {
 
   // Separate requests based on user role
   const incomingRequests = requests.filter(req => !isEmployer && req.status === 'pending');
-  const sentRequests = requests.filter(req => isEmployer);
   const unreadCount = conversations.reduce((acc, conv) => acc + (conv.unread_count || 0), 0);
 
   return (

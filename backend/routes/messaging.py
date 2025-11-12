@@ -91,11 +91,42 @@ def get_messaging_requests():
         if not user:
             return jsonify({"msg": "User not found"}), 404
         
-        requests_data = [req.to_json() for req in user.messaging_requests]
-        return jsonify({"requests": requests_data}), 200
+        # Get received requests (stored in user's messaging_requests)
+        received_requests = [req.to_json() for req in user.messaging_requests]
+        print(f"DEBUG: User {user_id} has {len(received_requests)} received requests")
+        
+        # Get sent requests (stored in other users' messaging_requests where from_user_id matches)
+        sent_requests = []
+        if user.role == "employer":
+            print(f"DEBUG: Fetching sent requests for employer {user_id}")
+            # Query all users and check their messaging_requests
+            all_users = User.objects.all()
+            print(f"DEBUG: Total users in database: {all_users.count()}")
+            
+            for other_user in all_users:
+                if not other_user.messaging_requests:
+                    continue
+                    
+                for req in other_user.messaging_requests:
+                    if str(req.from_user_id) == str(user_id):
+                        print(f"DEBUG: Found sent request to {other_user.name} (status: {req.status})")
+                        req_json = req.to_json()
+                        # Add the recipient's info to make it clear who it was sent to
+                        req_json['to_user_name'] = other_user.name
+                        req_json['to_user_email'] = other_user.email
+                        sent_requests.append(req_json)
+            
+            print(f"DEBUG: Total sent requests found: {len(sent_requests)}")
+        
+        return jsonify({
+            "requests": received_requests,
+            "sent_requests": sent_requests
+        }), 200
         
     except Exception as e:
         print(f"Error fetching requests: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"msg": "Failed to fetch requests", "error": str(e)}), 500
 
 @messaging_bp.route("/requests/<request_id>/respond", methods=["POST"])

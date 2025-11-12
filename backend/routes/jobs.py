@@ -287,3 +287,92 @@ def get_job_outlook():
     }
 
     return jsonify({"success": True, "data": outlook_data}), 200
+ADZUNA_APP_ID = os.getenv('ADZUNA_APP_ID')
+ADZUNA_API_KEY = os.getenv('ADZUNA_API_KEY')
+
+@jobs_bp.route("/test-adzuna", methods=["GET"])
+def test_adzuna():
+    """Test endpoint to verify Adzuna API credentials and connectivity"""
+    import requests
+    
+    if not ADZUNA_APP_ID or not ADZUNA_API_KEY:
+        return jsonify({
+            "status": "error",
+            "message": "Adzuna API credentials not configured",
+            "details": {
+                "ADZUNA_APP_ID": "Not set" if not ADZUNA_APP_ID else "Set",
+                "ADZUNA_API_KEY": "Not set" if not ADZUNA_API_KEY else "Set"
+            },
+            "instructions": "Add ADZUNA_APP_ID and ADZUNA_API_KEY to your .env file"
+        }), 400
+    
+    try:
+        # Simple test call to Adzuna API for India
+        test_url = "https://api.adzuna.com/v1/api/jobs/in/search/1"
+        test_params = {
+            "app_id": ADZUNA_APP_ID,
+            "app_key": ADZUNA_API_KEY,
+            "what": "software developer",
+            "results_per_page": 1
+        }
+        
+        print(f"Testing Adzuna API with URL: {test_url}")
+        print(f"Parameters: app_id={ADZUNA_APP_ID[:8]}..., what=software developer")
+        
+        response = requests.get(test_url, params=test_params, timeout=10)
+        
+        print(f"Adzuna API Response Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            return jsonify({
+                "status": "success",
+                "message": "✅ Adzuna API is working correctly!",
+                "credentials_status": "Valid",
+                "sample_data": {
+                    "total_jobs_in_india": data.get("count", 0),
+                    "mean_salary": data.get("mean", "N/A"),
+                    "sample_job_title": data.get("results", [{}])[0].get("title", "N/A") if data.get("results") else "N/A"
+                },
+                "test_query": "software developer in India"
+            }), 200
+        elif response.status_code == 401:
+            return jsonify({
+                "status": "error",
+                "message": "❌ Adzuna API credentials are invalid",
+                "details": "401 Unauthorized - Check your ADZUNA_APP_ID and ADZUNA_API_KEY",
+                "response": response.text[:200]
+            }), 401
+        elif response.status_code == 403:
+            return jsonify({
+                "status": "error",
+                "message": "❌ Adzuna API access forbidden",
+                "details": "403 Forbidden - Your trial account may have exceeded limits or needs activation",
+                "response": response.text[:200]
+            }), 403
+        else:
+            return jsonify({
+                "status": "error",
+                "message": f"❌ Adzuna API returned status code {response.status_code}",
+                "response": response.text[:200]
+            }), response.status_code
+            
+    except requests.exceptions.Timeout:
+        return jsonify({
+            "status": "error",
+            "message": "⏱️ Request timed out",
+            "details": "The Adzuna API took too long to respond"
+        }), 504
+    except requests.exceptions.ConnectionError:
+        return jsonify({
+            "status": "error",
+            "message": "🔌 Connection error",
+            "details": "Could not connect to Adzuna API. Check your internet connection."
+        }), 503
+    except Exception as e:
+        import traceback
+        return jsonify({
+            "status": "error",
+            "message": f"💥 Unexpected error: {str(e)}",
+            "traceback": traceback.format_exc()
+        }), 500

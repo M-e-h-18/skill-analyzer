@@ -31,7 +31,17 @@ load_dotenv()
 ADZUNA_APP_ID = os.getenv('ADZUNA_APP_ID')
 ADZUNA_API_KEY = os.getenv('ADZUNA_API_KEY')
 textrazor.api_key = os.getenv("TEXTRAZOR_API_KEY")
+from functools import lru_cache
+from time import sleep
+import hashlib
 
+# Cache Adzuna results for 1 hour
+@lru_cache(maxsize=100)
+def cached_fetch_adzuna_data(job_title, country, max_age_days):
+    """Cached version to avoid repeated API calls"""
+    # Add a small delay between requests to avoid rate limiting
+    sleep(0.5)  # 500ms delay between requests
+    return fetch_adzuna_data(job_title, country, ADZUNA_APP_ID, ADZUNA_API_KEY, max_age_days)
 ADZUNA_BASE_URL = "https://api.adzuna.com/v1/api/jobs"
 ADZUNA_SEARCH_COUNTRY = "in"
 app = Flask(__name__)
@@ -64,10 +74,9 @@ def job_outlook():
         for country_code in countries:
             country_name = "India" if country_code == "in" else "UK" if country_code == "gb" else country_code.upper()
 
-            current_data = fetch_adzuna_data(job_title, country_code, ADZUNA_APP_ID, ADZUNA_API_KEY, max_age_days=30)
-            historical_6m = fetch_adzuna_data(job_title, country_code, ADZUNA_APP_ID, ADZUNA_API_KEY, max_age_days=180)
-            historical_12m = fetch_adzuna_data(job_title, country_code, ADZUNA_APP_ID, ADZUNA_API_KEY, max_age_days=365)
-
+            current_data = cached_fetch_adzuna_data(job_title, country_code, 30)
+            historical_6m = cached_fetch_adzuna_data(job_title, country_code, 180)
+            historical_12m = cached_fetch_adzuna_data(job_title, country_code, 365)
 
             job_growth = calculate_growth_trend(
                 historical_12m.get("total_jobs", 0),
@@ -1255,7 +1264,7 @@ def evaluate():
             try:
                 user = User.objects.get(id=uid)
                 user.analysis_history.append({
-                    "timestamp": datetime.timezone.now(),
+                    "timestamp": datetime.now(timezone.utc),
                     "skills_analyzed": user_skills,
                     "results": analysis_result
                 })

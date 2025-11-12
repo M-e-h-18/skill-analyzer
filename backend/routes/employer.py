@@ -132,7 +132,95 @@ def get_job_applicants(job_id):
 
     return jsonify({"applicants": applicants}), 200
 
-
+@employer_bp.route('/compare-candidates/<job_id>', methods=['POST'])
+@jwt_required()
+def compare_candidates(job_id):
+    """Compare multiple candidates for a specific job"""
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        
+        # Check if user is an employer
+        if user.role != 'employer':
+            return jsonify({"ok": False, "msg": "Unauthorized. Only employers can compare candidates."}), 403
+        
+        # Get the job posting
+        try:
+            job = JobPosting.objects.get(id=job_id, posted_by=user)
+        except DoesNotExist:
+            return jsonify({"ok": False, "msg": "Job not found or you don't have permission."}), 404
+        
+        # Get candidate IDs from request
+        data = request.json or {}
+        candidate_ids = data.get('candidate_ids', [])
+        
+        if not candidate_ids or len(candidate_ids) < 2:
+            return jsonify({"ok": False, "msg": "At least 2 candidates required for comparison."}), 400
+        
+        # Find the candidates in the job's applicants
+        compared_candidates = []
+        
+        for applicant in job.applicants:
+            if str(applicant.candidate_id) in candidate_ids:
+                # Parse ATS score
+                ats_score_str = applicant.ats_score
+                try:
+                    if isinstance(ats_score_str, str):
+                        ats_score = int(ats_score_str.replace('%', '').strip())
+                    else:
+                        ats_score = int(ats_score_str) if ats_score_str else 0
+                except (ValueError, AttributeError):
+                    ats_score = 0
+                
+                compared_candidates.append({
+                    "id": str(applicant.candidate_id),
+                    "name": applicant.candidate_name,
+                    "email": applicant.candidate_email,
+                    "ats_score": ats_score,
+                    "matched_skills": applicant.matched_skills,
+                    "missing_skills": applicant.missing_skills,
+                    "matched_count": len(applicant.matched_skills) if applicant.matched_skills else 0,
+                    "missing_count": len(applicant.missing_skills) if applicant.missing_skills else 0,
+                    "status": applicant.status,
+                    "applied_at": applicant.applied_at.isoformat() if applicant.applied_at else None
+                })
+        
+        if len(compared_candidates) < 2:
+            return jsonify({"ok": False, "msg": "Could not find enough candidates to compare."}), 404
+        
+        # Sort candidates by ATS score (highest first)
+        compared_candidates.sort(key=lambda x: x['ats_score'], reverse=True)
+        
+        # Calculate comparison metadata
+        total_candidates = len(compared_candidates)
+        avg_ats_score = round(sum(c['ats_score'] for c in compared_candidates) / total_candidates, 1)
+        
+        top_candidate = compared_candidates[0] if compared_candidates else None
+        
+        comparison_metadata = {
+            "total_candidates": total_candidates,
+            "avg_ats_score": avg_ats_score,
+            "top_candidate": {
+                "name": top_candidate['name'],
+                "ats_score": top_candidate['ats_score']
+            } if top_candidate else None,
+            "job_title": job.title,
+            "job_id": str(job.id)
+        }
+        
+        return jsonify({
+            "ok": True,
+            "candidates": compared_candidates,
+            "comparison_metadata": comparison_metadata
+        })
+        
+    except DoesNotExist:
+        return jsonify({"ok": False, "msg": "User not found"}), 404
+    except Exception as e:
+        print(f"Error comparing candidates: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"ok": False, "msg": f"An error occurred: {str(e)}"}), 500
 @employer_bp.route("/job_skills/suggest", methods=["POST"])
 @jwt_required()
 def suggest_job_skills():

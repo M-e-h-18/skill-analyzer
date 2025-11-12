@@ -1,3 +1,5 @@
+//app.jsx
+
 import React, { useState, useEffect, useRef } from 'react';
 import { GitBranch, User, LogOut, FileText, Briefcase, Upload, Target, Search, ExternalLink, ChevronRight, AlertCircle, CheckSquare } from 'lucide-react';
 import { MessageCircle } from 'lucide-react';
@@ -395,6 +397,8 @@ const SkillAnalyzerApp = () => {
 
   const tabs = user?.role === 'employer' 
     ? [
+        { id: 'dashboard', label: 'Dashboard', icon: Briefcase },
+        { id: 'messages', label: 'Messages', icon: MessageCircle }
       ]
     : [
         { id: 'skills', label: 'Skills & Analysis', icon: GitBranch },
@@ -490,7 +494,8 @@ const SkillAnalyzerApp = () => {
         <div className="grid md:grid-cols-2 gap-6">
           {user?.role === 'employer' ? (
             <div className="col-span-2">
-              <EmployerDashboard isDark={isDark} />
+              {activeTab === 'dashboard' && <EmployerDashboard isDark={isDark} user={user} />}
+              {activeTab === 'messages' && <MessagingPanel isDark={isDark} user={user} />}
             </div>
           ) : (
             <>

@@ -62,7 +62,7 @@ export const evaluateSkills = (skillsData) => api.post('/analysis/evaluate', ski
 
 // FIXED: Changed from /job_outlook to /jobs/outlook
 export const postEmployerJobOutlook = (jobTitle) => 
-  api.post('/jobs/outlook', { job_title: jobTitle }).then(res => res.data);
+  api.post('/job_outlook', { job_title: jobTitle }).then(res => res.data);
 
 export const getAnalysisHistory = () => api.get('/history').then(res => res.data);
 export const suggestJobSkills = (jobData) => api.post('/employer/job_skills/suggest', jobData).then(res => res.data);
@@ -84,6 +84,7 @@ export const getEmployerSentRequests = () => api.get('/employer/sent-requests').
 // Update application status
 export const updateApplicationStatus = (jobId, candidateId, status) =>
   api.put(`/employer/application/${jobId}/${candidateId}/status`, { status });
+
 // Resume
 export const uploadResume = (formData) =>
   api.post('/resume/upload', formData, {
@@ -114,6 +115,10 @@ export const getJobApplicants = (jobId) => api.get(`/employer/job-applicants/${j
 export const deleteJob = (jobId) => api.delete(`/employer/delete-job/${jobId}`).then(res => res.data);
 export const analyzeCandidateATS = (jobId, candidateId) =>
   api.post(`/employer/analyze-candidate/${jobId}`, { candidate_id: candidateId }).then(res => res.data);
+
+// NEW: Compare multiple candidates for a job
+export const compareJobCandidates = (jobId, candidateIds) =>
+  api.post(`/employer/compare-candidates/${jobId}`, { candidate_ids: candidateIds }).then(res => res.data);
 
 // Skills mapping
 export const mapSkill = (skillData) => api.post('/skills/map', skillData).then(res => res.data);
